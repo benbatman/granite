@@ -1,0 +1,70 @@
+# BUILD.bazel
+
+# This imports the C++ rules for Protobuf provided by gRPC's build system.
+load("@grpc//bazel:cc_grpc_library.bzl", "cc_grpc_library")
+
+# Rule defines a "protobuf library" from our .proto file
+# Generic target that other language-specific rules can use
+proto_library(
+    name = "feature_store_proto",
+    srcs = ["feature_store.proto"],
+    deps = [
+        "@protobuf//:timestamp_proto"
+    ]
+)
+
+# Compile the C++ messages / Generate the code from proto_library
+cc_proto_library(
+    name = "feature_store_cc_proto",
+    deps = [":feature_store_proto"]
+)
+
+cc_grpc_library(
+    name = "feature_store_cc_grpc",
+    srcs = [":feature_store_proto"],
+    deps = [":feature_store_cc_proto"],
+    grpc_only = True,
+    visibility = ["//visibility:public"]
+)
+
+# Rule to build consistent hash ring logic
+cc_library(
+    name = "consistent_hash_ring",
+    srcs = ["consistent_hash_ring.cc"],
+    hdrs = ["consistent_hash_ring.h"],
+    visibility = ["//visibility:public"],
+)
+
+# C++ router binary
+cc_binary(
+    name = "feature_store_router",
+    srcs = ["feature_store_router.cc"],
+    deps = [
+        ":consistent_hash_ring",
+        ":feature_store_cc_grpc",
+        "@grpc//:grpc++",
+        "@grpc//:grpc++_reflection",
+    ]
+    
+)
+
+# C++ server binary
+cc_binary(
+    name = "feature_store_server",
+    srcs = ["feature_store_server.cc"],
+    deps = [
+        # Code generated from proto file
+        ":feature_store_cc_grpc",
+        ":feature_store_cc_proto",
+
+        # gRPC C++ runtime and reflection
+        "@grpc//:grpc++",
+        "@grpc//:grpc++_reflection",
+
+        # Protobuf runtime
+        "@protobuf//:protobuf",
+
+        # rockdb
+        "@rocksdb//:rocksdb",
+    ]
+)

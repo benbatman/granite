@@ -1,0 +1,63 @@
+// feature_store.proto
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+// Helps prevent naming conflicts bewteen projects
+// package name becomes the C++ namespace automatically
+package featurestore;
+
+// Service definition for features store
+service FeatureStoreService {
+    // Method to write a batch of features to the store
+    rpc PutFeatures(PutFeaturesRequest) returns (PutFeaturesResponse) {}
+
+    // Method to read a batch of features from the store
+    rpc GetFeatures(GetFeaturesRequest) returns (GetFeaturesResponse) {}
+}
+
+// A message to hold a feature's value, which can be one of many types.
+message Value {
+    oneof value_type {
+        double double_value = 1; // '= 1' are unique field numbers, how protobuf identifies fields in binary format
+        int64 int64_value = 2;
+        string string_value = 3;
+        bool bool_value = 4;
+        DoubleList double_list = 5;
+    }
+}
+
+message Feature {
+    string feature_name = 1;
+    Value value = 2;
+    google.protobuf.Timestamp event_timestamp = 3;
+}
+
+// Helper message for representing a list of doubles
+message DoubleList {
+    repeated double values = 1;
+}
+
+// Request/Response messages for service
+
+// Define what goes into the requests and responses
+message PutFeaturesRequest {
+    string feature_group = 1;
+    string entity_id = 2;
+    repeated Feature features = 3; // list of features to write
+}
+
+// Empty means success for now
+message PutFeaturesResponse {}
+
+message GetFeaturesRequest {
+    string feature_group = 1;
+    string entity_id = 2;
+    repeated string feature_names = 3; // list of feature names to get
+}
+
+message GetFeaturesResponse {
+    string feature_group = 1;
+    string entity_id = 2;
+    map<string, Feature> features = 3; // map of feature names to their values
+}

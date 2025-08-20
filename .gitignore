@@ -1,0 +1,22 @@
+# Bazel build artifacts
+/bazel-bin/
+/bazel-out/
+/bazel-testlogs/
+/bazel-*
+.bazelrc.user
+
+# C++ Build artifacts
+*.o
+*.a
+*.so
+*.lo
+*.la
+*.dylib
+*.dll
+*.exe
+*.out
+*.app
+
+
+# VSCode
+.vscode/
