@@ -1,11 +1,11 @@
 # Granite
 
+**A Distributed, High-Performance Feature Store in C++**
+Granite is a proof-of-concept distributed feature store built from the ground up in modern C++. It is designed for low-latency feature retrieval and horizontal scalability. The system uses a sharded architecture with a [gRPC](https://grpc.io/) interface, persistent storage via RocksDB, and intelligent request routing with a consistent hashing ring.
+
 ## Why Granite?
 
 It sounded cool, and I was staring at RocksDB website so...yeah
-
-**A Distributed, High-Performance Feature Store in C++**
-Granite is a proof-of-concept distributed feature store built from the ground up in modern C++. It is designed for low-latency feature retrieval and horizontal scalability. The system uses a sharded architecture with a [gRPC](https://grpc.io/) interface, persistent storage via RocksDB, and intelligent request routing with a consistent hashing ring.
 
 ## Architecture
 
