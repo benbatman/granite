@@ -28,3 +28,4 @@
 *.crt
 *.srl
 *.csr
+*.ext

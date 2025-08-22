@@ -1,6 +1,6 @@
 #!/bin/bash
 
-grpcurl -plaintext -d '{
+grpcurl -cacert ca.crt -d '{
   "feature_group": "user_profile",
   "entity_id": "user_alpha",
   "features": [
