@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "consistent_hash_ring.h"
+#include "read_file.h"
 #include "feature_store.grpc.pb.h"
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
 #include <grpcpp/grpcpp.h>
@@ -13,18 +14,29 @@ class RouterServiceImpl final : public featurestore::FeatureStoreService::Servic
 {
 public:
     // The constructor takes a list of all available shard addresses
-    RouterServiceImpl(const std::vector<std::string> &shard_addresses)
+    // & CA cert
+    RouterServiceImpl(const std::vector<std::string> &shard_addresses,
+                      const std::string &ca_cert_path)
     {
+        // Read root CA cert
+        std::string root_cert = readFileToString(ca_cert_path);
+
+        // Create SSL/TLS cred object
+        grpc::SslCredentialsOptions ssl_opts;
+        ssl_opts.pem_root_certs = root_cert;
+        // Acting as client here, so using SslCredentials, not SslServerCredentials
+        auto channel_creds = grpc::SslCredentials(ssl_opts);
+
         for (const auto &address : shard_addresses)
         {
             // Add shard to the consistent hash ring
             ring_.AddNode(address);
 
-            // Create a gRPC client "stub" for this shard
-            auto channel = grpc::CreateChannel(address, grpc::InsecureChannelCredentials());
+            // Create a secure gRPC channel using credentials
+            auto channel = grpc::CreateChannel(address, channel_creds);
             stubs_[address] = featurestore::FeatureStoreService::NewStub(channel);
 
-            std::cout << "Router connected to shard at " << address << std::endl;
+            std::cout << "Router connected to shard at " << address << " using TLS" << std::endl;
         }
     }
 
@@ -86,16 +98,26 @@ private:
     std::map<std::string, std::unique_ptr<featurestore::FeatureStoreService::Stub>> stubs_;
 };
 
-void RunRouter(const std::vector<std::string> &shard_addresses)
+void RunRouter(const std::string &ca_path, const std::string &key_path,
+               const std::string &cert_path, const std::vector<std::string> &shard_addresses)
 {
     std::string router_address("0.0.0.0:50050");
-    RouterServiceImpl service(shard_addresses);
+    RouterServiceImpl service(shard_addresses, ca_path);
+
+    // Read private key and certificate
+    std::string private_key = readFileToString(key_path);
+    std::string certificate = readFileToString(cert_path);
+
+    // Create SSL/TSL cred object
+    grpc::SslServerCredentialsOptions ssl_opts;
+    ssl_opts.pem_key_cert_pairs.push_back({private_key, certificate});
+    auto server_creds = grpc::SslServerCredentials(ssl_opts);
 
     grpc::EnableDefaultHealthCheckService(true);
     grpc::reflection::InitProtoReflectionServerBuilderPlugin();
 
     grpc::ServerBuilder builder;
-    builder.AddListeningPort(router_address, grpc::InsecureServerCredentials());
+    builder.AddListeningPort(router_address, server_creds);
     builder.RegisterService(&service);
 
     std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
@@ -106,16 +128,16 @@ void RunRouter(const std::vector<std::string> &shard_addresses)
 
 int main(int argc, char **argv)
 {
-    if (argc < 2)
+    if (argc < 5)
     {
-        std::cerr << "Usage: " << argv[0] << " <shard_address_1> <shard_address_2> ..." << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <ca_cert_path> <server_key_path> <server_cert_path> <shard_address_1> ..." << std::endl;
         return 1;
     }
     std::vector<std::string> shards;
-    for (int i = 1; i < argc; ++i)
+    for (int i = 4; i < argc; ++i)
     {
         shards.push_back(argv[i]);
     }
-    RunRouter(shards);
+    RunRouter(argv[1], argv[2], argv[3], shards);
     return 0;
 }

@@ -12,6 +12,8 @@
 // The C++ code generated from .proto file
 #include "feature_store.grpc.pb.h"
 
+#include "read_file.h"
+
 // RockDB headers
 #include "rocksdb/db.h"
 #include "rocksdb/options.h"
@@ -118,17 +120,27 @@ private:
     std::unique_ptr<rocksdb::DB> db_;
 };
 
-void RunServer(const std::string &port, const std::string &db_path)
+void RunServer(const std::string &port, const std::string &db_path,
+               const std::string &key_path, const std::string &cert_path)
 {
     std::string server_address("0.0.0.0:" + port);
     // Pass the path for the database to the service constructor.
     FeatureStoreServiceImpl service(db_path);
 
+    // Read private key and certificate
+    std::string private_key = readFileToString(key_path);
+    std::string certificate = readFileToString(cert_path);
+
+    // Create SSL/TSL cred object
+    grpc::SslServerCredentialsOptions ssl_opts;
+    ssl_opts.pem_key_cert_pairs.push_back({private_key, certificate});
+    auto server_creds = grpc::SslServerCredentials(ssl_opts);
+
     grpc::EnableDefaultHealthCheckService(true);
     grpc::reflection::InitProtoReflectionServerBuilderPlugin();
 
     grpc::ServerBuilder builder;
-    builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
+    builder.AddListeningPort(server_address, server_creds);
     builder.RegisterService(&service);
 
     std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
@@ -139,15 +151,11 @@ void RunServer(const std::string &port, const std::string &db_path)
 
 int main(int argc, char **argv)
 {
-    if (argc != 3)
+    if (argc != 5)
     {
-        std::cerr << "Usage: " << argv[0] << " <port> <db_path>" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <port> <db_path> <server_key_path> <server_cert_path>" << std::endl;
         return 1;
     }
-
-    std::string port = argv[1];
-    std::string db_path = argv[2];
-
-    RunServer(port, db_path);
+    RunServer(argv[1], argv[2], argv[3], argv[4]);
     return 0;
 }

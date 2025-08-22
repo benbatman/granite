@@ -35,6 +35,13 @@ cc_library(
     visibility = ["//visibility:public"],
 )
 
+cc_library(
+    name = "file_utils",
+    srcs = ["read_file.cc"],
+    hdrs = ["read_file.h"],
+    visibility = ["//visibility:public"],
+)
+
 # C++ router binary
 cc_binary(
     name = "feature_store_router",
@@ -42,6 +49,7 @@ cc_binary(
     deps = [
         ":consistent_hash_ring",
         ":feature_store_cc_grpc",
+        ":file_utils",
         "@grpc//:grpc++",
         "@grpc//:grpc++_reflection",
     ]
@@ -56,6 +64,7 @@ cc_binary(
         # Code generated from proto file
         ":feature_store_cc_grpc",
         ":feature_store_cc_proto",
+        ":file_utils",
 
         # gRPC C++ runtime and reflection
         "@grpc//:grpc++",

@@ -20,3 +20,11 @@
 
 # VSCode
 .vscode/
+
+
+# TLS/SSL
+*.pem
+*.key
+*.crt
+*.srl
+*.csr
